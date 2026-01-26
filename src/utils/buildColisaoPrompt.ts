@@ -4,39 +4,49 @@ import type { MarcasINPI } from '../models/MarcasINPI'
 export function buildColisaoPrompt(
   marcaCliente: MarcasCliente,
   marcasINPI: MarcasINPI[]
-) {
+): string {
+  const marcasFormatadas = marcasINPI
+    .map((m, index) => {
+      return `${index + 1}. Nome: ${m.nome}, Classe: ${m.tipo} (Classificação de NICE)`
+    })
+    .join('\n')
+
   return `
-Atue como um Paralegal especializado em Colidência de Marcas, atuando no Brasil.
+Atue como um Paralegal especialista em Propriedade Intelectual, com foco em análise de colidência de marcas no Brasil, observando a prática do INPI.
 
-Marca do Cliente:
-- ID: ${marcaCliente.id}
+DADOS DA MARCA DO CLIENTE:
 - Nome: ${marcaCliente.nome}
-- Classe NICE: ${marcaCliente.tipo}
-- Especificação: ${marcaCliente.especificacao}
+- Classe: ${marcaCliente.tipo} (Classificação de NICE)
 
-Marcas existentes para análise:
-${marcasINPI
-  .map(
-    m => `
-- ID: ${m.id}
-  Nome: ${m.nome}
-  Classe: ${m.tipo}
-  Especificação: ${m.especificacao}
-`
-  )
-  .join('')}
+MARCAS EXISTENTES PARA ANÁLISE:
+${marcasFormatadas}
 
-Regras obrigatórias de análise:
-A- Se o nome for exatamente igual, apontar colidência independentemente da classe.
-B- Analisar semântica, fonética e similaridade visual.
-C- Se as classes não possuírem relação alguma, não apontar colidência.
-   Exceção: classe 35 e casos do item A.
-D- Caso exista classificação nacional antiga (presença de "/"), converter para classe correlata da NICE.
-E- Desconsiderar palavras de uso comum dentro da respectiva classe.
-F- Focar exclusivamente no núcleo distintivo da marca.
-G- Considere quais colidências seriam relevantes do ponto de vista de um empresário.
+CRITÉRIOS OBRIGATÓRIOS PARA A ANÁLISE:
 
-Retorne EXCLUSIVAMENTE um JSON válido no formato:
+A. Caso o nome da marca seja idêntico ou praticamente idêntico, a colidência deve ser apontada, independentemente da classe.
+
+B. Avaliar a semelhança fonética, gráfica e semântica entre as marcas, considerando o núcleo distintivo do elemento nominativo.
+
+C. Considerar colidência apenas quando as classes forem idênticas ou correlatas, com base na Classificação de NICE.
+   - Classes sem qualquer afinidade NÃO devem gerar colidência.
+   - Exceção: marcas na Classe 35 podem colidir com outras classes quando houver afinidade mercadológica.
+
+D. Caso a classe informada utilize classificação nacional antiga (identificável pela presença de "/"), ela deve ser convertida para a classe correlata da Classificação de NICE atual.
+
+E. Desconsiderar termos genéricos, descritivos ou de uso comum nas respectivas classes, tais como:
+   - "Medic", "Clínica", "Farm", "Notícias", "Restaurante", entre outros.
+   A análise deve focar exclusivamente no elemento distintivo da marca.
+
+F. Avaliar a colidência sob a perspectiva prática do titular da marca do cliente, considerando quais marcas existentes poderiam gerar risco jurídico ou comercial relevante.
+
+INSTRUÇÕES DE RESPOSTA (OBRIGATÓRIAS):
+
+- Retorne APENAS as marcas em que haja colidência relevante.
+- Caso não exista qualquer colidência relevante, retorne um array vazio.
+- NÃO inclua explicações fora da estrutura solicitada.
+- A resposta DEVE ser um JSON válido, sem comentários ou texto adicional.
+
+FORMATO EXATO DA RESPOSTA:
 
 {
   "marcaCliente": {
@@ -54,7 +64,5 @@ Retorne EXCLUSIVAMENTE um JSON válido no formato:
     }
   ]
 }
-
-⚠️ Caso não haja colidência relevante, retorne "colidencias": []
 `
 }

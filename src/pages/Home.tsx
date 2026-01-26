@@ -9,7 +9,6 @@ import { RelatorioColisoes } from '../components/RelatorioColisoes'
 import { xmlToJson } from '../utils/xmlToJson'
 import { csvToMarcasCliente } from '../utils/csvToMarcasCliente'
 import { xmlJsonToMarcasINPI } from '../utils/xmlJsonToMarcasINPI'
-import { buildColisaoPrompt } from '../utils/buildColisaoPrompt'
 import { exportRelatorioExcel } from '../utils/exportRelatorioExcel'
 
 import { analisarColidencia } from '../services/openaiService'
@@ -87,48 +86,68 @@ export function Home() {
   if (!xmlContent || !csvContent) return
 
   const xmlConverted = xmlToJson(xmlContent)
+  console.log('🔄 XML convertido em JSON')
 
   const cliente = csvToMarcasCliente(csvContent)
   const inpi = xmlJsonToMarcasINPI(xmlConverted)
 
-  console.log('Cliente length:', cliente.length)
-  console.log('INPI length:', inpi.length)
+  console.log('📊 Totais:', {
+      cliente: cliente.length,
+      inpi: inpi.length,
+  })
 
   setMarcasCliente(cliente)
   setMarcasINPI(inpi)
 }, [xmlContent, csvContent])
 
+  function chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks = []
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size))
+    }
+    return chunks
+  }
+
+
   /**
    * 🔥 Chamada do ChatGPT (botão Verificar Colidências)
    */
   const verificarColidencias = async () => {
+    console.log('🔥 Cliquei em Verificar Colidências')
+
     if (!marcasCliente.length || !marcasINPI.length) return
 
     setIsLoading(true)
+    setRelatorio([])
 
     try {
       const resultados: RelatorioColisao[] = []
 
-      for (const marcaCliente of marcasCliente) {
-        const prompt = buildColisaoPrompt(marcaCliente, marcasINPI)
-        const resposta = await analisarColidencia(prompt)
+      const clienteChunks = chunkArray(marcasCliente, 10)
+      const inpiBase = marcasINPI.slice(0, 50)
 
-        const parsed = JSON.parse(resposta)
+      for (const chunk of clienteChunks) {
+        console.log('📦 Enviando chunk cliente:', chunk.length)
 
-        // Só adiciona se houver colidências
-        if (parsed.colidencias && parsed.colidencias.length > 0) {
-          resultados.push(parsed)
+        const resposta = await analisarColidencia(chunk, inpiBase)
+
+        if (resposta?.colisoes?.length) {
+          resultados.push(...resposta.colisoes)
         }
       }
 
       setRelatorio(resultados)
+
     } catch (error) {
-      console.error('Erro ao verificar colidências:', error)
-      alert('Erro ao analisar colidências. Tente novamente.')
+      console.error('❌ Erro ao verificar colidências:', error)
     } finally {
       setIsLoading(false)
     }
   }
+
+
+
+
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-8">

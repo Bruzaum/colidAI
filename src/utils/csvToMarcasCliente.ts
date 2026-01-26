@@ -30,5 +30,8 @@ export function csvToMarcasCliente(csv: string): MarcasCliente[] {
     })
   }
 
+  console.log('📄 MarcasCliente criadas:', result.length);
+  console.log('🧾 Exemplo MarcasCliente:', result[0]);
+
   return result
 }
